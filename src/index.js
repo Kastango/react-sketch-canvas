@@ -13,7 +13,6 @@ const SvgSketchCanvas = class extends React.Component {
       reset: false,
       resetStore: new List(),
       redoStore: new List(),
-      currentPaths: new List(),
     };
 
     this.handlePointerDown = this.handlePointerDown.bind(this);
@@ -23,8 +22,8 @@ const SvgSketchCanvas = class extends React.Component {
 
     this.exportImage = this.exportImage.bind(this);
     this.exportSvg = this.exportSvg.bind(this);
-    this.exportPaths = this.exportPaths.bind(this);
-    this.loadPaths = this.loadPaths.bind(this);
+    // this.exportPaths = this.exportPaths.bind(this);
+    // this.loadPaths = this.loadPaths.bind(this);
 
     this.eraseMode = this.eraseMode.bind(this);
     this.clearCanvas = this.clearCanvas.bind(this);
@@ -38,16 +37,6 @@ const SvgSketchCanvas = class extends React.Component {
   release drawing even when point goes out of canvas */
   componentDidMount() {
     document.addEventListener('pointerup', this.handlePointerUp);
-  }
-
-  shouldComponentUpdate(nextProps, nextState) {
-    const { currentPaths } = nextState;
-    const { onUpdate } = this.props;
-
-    // Return currentPaths to parent on update
-    onUpdate(currentPaths);
-
-    return true;
   }
 
   componentWillUnmount() {
@@ -75,16 +64,21 @@ const SvgSketchCanvas = class extends React.Component {
     const { drawMode } = this.state;
     const point = this.getCoordinates(pointerEvent);
 
-    this.setState(state => ({
+    const { pushPaths } = this.props;
+
+    // PUSH
+    pushPaths(
+      new Map({
+        drawMode,
+        paths: new List([point]),
+      }),
+    );
+
+    this.setState({
       isDrawing: true,
+      reset: false,
       redoStore: new List(),
-      currentPaths: state.currentPaths.push(
-        new Map({
-          drawMode,
-          paths: new List([point]),
-        }),
-      ),
-    }));
+    });
   }
 
   handlePointerMove(pointerEvent) {
@@ -98,9 +92,14 @@ const SvgSketchCanvas = class extends React.Component {
 
     const point = this.getCoordinates(pointerEvent);
 
-    this.setState(state => ({
-      currentPaths: state.currentPaths.updateIn([state.currentPaths.size - 1], pathMap => pathMap.updateIn(['paths'], list => list.push(point))),
-    }));
+    const { updatePaths } = this.props;
+
+    updatePaths(point);
+
+    // this.setState(state => ({
+    //   currentPaths: state.currentPaths.updateIn([state.currentPaths.size - 1],
+    // pathMap => pathMap.updateIn(['paths'], list => list.push(point))),
+    // }));
   }
 
   handlePointerUp(pointerEvent) {
@@ -126,42 +125,54 @@ const SvgSketchCanvas = class extends React.Component {
   }
 
   clearCanvas() {
-    this.setState(state => ({
+    const { paths, initializePaths } = this.props;
+
+    this.setState({
       reset: true,
-      resetStore: state.currentPaths,
-      currentPaths: new List(),
-    }));
+      // resetStore: state.currentPaths,
+      resetStore: paths,
+    });
+
+    initializePaths(new List());
   }
 
   undo() {
-    const { reset, currentPaths } = this.state;
+    const { reset, resetStore } = this.state;
+    const { paths, initializePaths, popPath } = this.props;
 
     if (reset) {
-      this.setState(state => ({
-        reset: false,
+      initializePaths(resetStore);
+
+      this.setState({
         resetStore: new List(),
-        currentPaths: state.resetStore,
-      }));
+        // currentPaths: state.resetStore,
+      });
       return;
     }
 
-    if (currentPaths.isEmpty()) return;
+    if (paths.isEmpty()) return;
 
     this.setState(state => ({
-      redoStore: state.redoStore.push(state.currentPaths.get(-1)),
-      currentPaths: state.currentPaths.pop(),
+      reset: false,
+      redoStore: state.redoStore.push(paths.get(-1)),
+      // currentPaths: state.currentPaths.pop(),
     }));
+
+    popPath();
   }
 
   redo() {
     const { redoStore } = this.state;
+    const { pushPaths } = this.props;
 
     if (redoStore.isEmpty()) return;
 
     this.setState(state => ({
       redoStore: state.redoStore.pop(),
-      currentPaths: state.currentPaths.push(state.redoStore.get(-1)),
+      // currentPaths: state.currentPaths.push(state.redoStore.get(-1)),
     }));
+
+    pushPaths(redoStore.get(-1));
   }
 
   /* Exporting options */
@@ -197,24 +208,6 @@ const SvgSketchCanvas = class extends React.Component {
     });
   }
 
-  exportPaths() {
-    const { currentPaths } = this.state;
-
-    return new Promise((resolve, reject) => {
-      try {
-        resolve(currentPaths);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-
-  loadPaths(paths) {
-    this.setState(prevState => ({
-      currentPaths: paths.concat(prevState.currentPaths),
-    }));
-  }
-
   /* Finally!!! Render method */
 
   render() {
@@ -227,9 +220,8 @@ const SvgSketchCanvas = class extends React.Component {
       strokeWidth,
       eraserWidth,
       style,
+      paths,
     } = this.props;
-
-    const { currentPaths } = this.state;
 
     return (
       <div
@@ -261,7 +253,7 @@ const SvgSketchCanvas = class extends React.Component {
             <Paths
               strokeWidth={strokeWidth}
               eraserWidth={eraserWidth}
-              paths={currentPaths}
+              paths={paths}
               strokeColor={strokeColor}
               canvasColor={canvasColor}
             />
@@ -287,7 +279,6 @@ SvgSketchCanvas.defaultProps = {
     border: '0.0625rem solid #9c9c9c',
     borderRadius: '0.25rem',
   },
-  onUpdate: () => {},
 };
 
 /* Props validation */
@@ -302,7 +293,11 @@ SvgSketchCanvas.propTypes = {
   eraserWidth: PropTypes.number,
   allowOnlyPointerType: PropTypes.string,
   style: PropTypes.objectOf(PropTypes.string),
-  onUpdate: PropTypes.func,
+  pushPaths: PropTypes.func.isRequired,
+  updatePaths: PropTypes.func.isRequired,
+  initializePaths: PropTypes.func.isRequired,
+  popPath: PropTypes.func.isRequired,
+  paths: PropTypes.objectOf(List).isRequired,
 };
 
 export default SvgSketchCanvas;

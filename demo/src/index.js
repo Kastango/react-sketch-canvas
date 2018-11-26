@@ -1,6 +1,7 @@
 import React from 'react';
 import { render } from 'react-dom';
 
+import { List } from 'immutable';
 import SvgSketchCanvas from '../../src';
 
 const modes = {
@@ -18,15 +19,15 @@ const Demo = class extends React.Component {
       penMode: true,
       exportedPaths: null,
       allowOnlyPointerType: 0,
+      paths: new List(),
     };
 
     this.canvas = null;
     this.getNextMode = this.getNextMode.bind(this);
-    this.onUpdate = this.onUpdate.bind(this);
-  }
-
-  onUpdate(paths) {
-    console.log(paths);
+    this.pushPaths = this.pushPaths.bind(this);
+    this.updatePaths = this.updatePaths.bind(this);
+    this.initializePaths = this.initializePaths.bind(this);
+    this.popPath = this.popPath.bind(this);
   }
 
   getNextMode() {
@@ -35,8 +36,32 @@ const Demo = class extends React.Component {
     }));
   }
 
+  pushPaths(point) {
+    this.setState(state => ({
+      paths: state.paths.push(point),
+    }));
+  }
+
+  updatePaths(point) {
+    this.setState(state => ({
+      paths: state.paths.updateIn([state.paths.size - 1], pathMap => pathMap.updateIn(['paths'], list => list.push(point))),
+    }));
+  }
+
+  initializePaths(paths) {
+    this.setState({
+      paths,
+    });
+  }
+
+  popPath() {
+    this.setState(state => ({
+      paths: state.paths.pop(),
+    }));
+  }
+
   render() {
-    const { exportedPaths, allowOnlyPointerType } = this.state;
+    const { exportedPaths, allowOnlyPointerType, paths } = this.state;
 
     const mode = modes[allowOnlyPointerType];
 
@@ -52,7 +77,11 @@ const Demo = class extends React.Component {
           strokeWidth={4}
           strokeColor="red"
           allowOnlyPointerType={mode}
-          onUpdate={this.onUpdate}
+          pushPaths={this.pushPaths}
+          popPath={this.popPath}
+          updatePaths={this.updatePaths}
+          initializePaths={this.initializePaths}
+          paths={paths}
         />
         <button
           type="button"
