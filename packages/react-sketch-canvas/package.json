@@ -12,7 +12,8 @@
   "scripts": {
     "build": "yarn clean && microbundle  --jsx React.createElement --globals react=React",
     "clean": "rimraf dist",
-    "start": "yarn clean && microbundle watch  --jsx React.createElement --globals react=React"
+    "start": "yarn clean && microbundle watch  --jsx React.createElement --globals react=React",
+    "lint": "eslint --fix src --ext 'js,jsx,ts,tsx'"
   },
   "dependencies": {
     "immer": "^6.0.3",

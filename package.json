@@ -10,6 +10,8 @@
     "documentation"
   ],
   "scripts": {
-    "start": "lerna run start --parallel"
+    "start": "lerna run start --parallel",
+    "lint": "lerna run lint",
+    "build": "lerna run build"
   }
 }

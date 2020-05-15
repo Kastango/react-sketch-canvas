@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { ExportImageType, Point, CanvasPath } from "./typings";
 import Paths from "./Paths";
 import "pepjs";
@@ -69,8 +69,6 @@ export class Canvas extends React.Component<CanvasProps> {
 
     const scrollLeft = window.scrollX ?? 0;
     const scrollTop = window.scrollY ?? 0;
-
-    console.log(scrollLeft, scrollTop);
 
     if (!boundingArea) {
       return { x: 0, y: 0 };

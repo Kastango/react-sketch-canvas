@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.build.json",
+
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "documentation": ["documentation"],
+      "react-sketch-canvas": ["packages/react-sketch-canvas"]
+    }
+  }
+}
